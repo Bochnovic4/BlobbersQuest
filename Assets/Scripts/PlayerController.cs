@@ -13,44 +13,77 @@ public class PlayerController : MonoBehaviour
     public Transform cameraTransform;
     public float rotationSpeed = 2f;
 
+    private Player playerStats;
     private Rigidbody rb;
     private Vector2 movementInput;
     private Vector2 lookInput;
     private bool jumpInput;
-    private bool isGrounded;
+    public bool isGrounded;
     private bool isMovingForward;
     private bool isMovingBack;
     private bool isMovingRight;
     private bool isMovingLeft;
     private bool isSprinting;
     private bool isBlocking;
+    public bool isPlayingAttackAnimation;
 
     private Animator playerAnimator;
     private float verticalLookRotation = 0f;
-    public float maxVerticalLookAngle = 60f;
+    private float maxVerticalLookAngle = 60f;
+
+    private float sprintTimer = 0f;
+    private float sprintStaminaDrainRate = 10f;
+    private float attackStaminaDrainRate = 20f;
+    private float jumpStaminaDrainRate = 20f;
+    private float dodgeStaminaDrainRate = 10f;
+
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         if (!cameraTransform) cameraTransform = Camera.main.transform;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-        //rb.centerOfMass = new Vector3(0, -1, 0);
         playerAnimator = GetComponent<Animator>();
+        playerStats = GetComponent<Player>();
     }
 
     private void Update()
     {
         HandleCameraRotation();
+        CheckAttackAnimationState();
+        if (isSprinting)
+        {
+            sprintTimer += Time.deltaTime; // Accumulate sprint time
+            if (sprintTimer >= 1f) // Apply stamina drain every second
+            {
+                playerStats.UseStamina(sprintStaminaDrainRate);
+                sprintTimer = 0f; // Reset timer
+            }
+            if (playerStats.currentStamina < sprintStaminaDrainRate)
+            {
+                // Stop sprinting if out of stamina
+                isSprinting = false;
+                playerAnimator.SetBool("isSprinting", false);
+            }
+        }
+        else
+        {
+            sprintTimer = 0f; // Reset timer when not sprinting
+            playerStats.StopUsingStamina();
+        }
+
     }
 
     private void FixedUpdate()
     {
         ApplyMovement();
         HandleJump();
+        CheckGroundStatus();
     }
 
     public void OnMove(InputAction.CallbackContext context)
     {
+        if (playerAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack")) return;
         movementInput = context.ReadValue<Vector2>();
         isMovingForward = movementInput.y > 0;
         isMovingBack = movementInput.y < 0;
@@ -65,10 +98,17 @@ public class PlayerController : MonoBehaviour
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed && isGrounded)
+        if (context.performed && isGrounded && playerStats.currentStamina > 0)
         {
-            jumpInput = true;
+            PerformJump();
         }
+    }
+
+    private void PerformJump()
+    {
+        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        playerStats.UseStamina(jumpStaminaDrainRate);
+        isGrounded = false;
     }
 
     public void OnLook(InputAction.CallbackContext context)
@@ -78,7 +118,7 @@ public class PlayerController : MonoBehaviour
 
     public void OnSprint(InputAction.CallbackContext context)
     {
-        if (context.performed)
+        if (context.performed && playerStats.currentStamina > 0)
         {
             isSprinting = true;
             playerAnimator.SetBool("isSprinting", isSprinting);
@@ -92,7 +132,7 @@ public class PlayerController : MonoBehaviour
 
     public void OnBlock(InputAction.CallbackContext context)
     {
-        if (context.performed)
+        if (context.started)
         {
             isBlocking = true;
             playerAnimator.SetBool("isBlocking", isBlocking);
@@ -104,8 +144,32 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public void OnAttack(InputAction.CallbackContext context)
+    {
+        if (context.started && !isPlayingAttackAnimation & playerStats.currentStamina > 0)
+        {
+            playerStats.UseStamina(attackStaminaDrainRate);
+            isPlayingAttackAnimation = true;
+            playerAnimator.SetTrigger("Attack");
+        }
+    }
+
+    private void OnDodge(InputAction.CallbackContext context)
+    {
+        if (context.started && playerStats.currentStamina > 0)
+        {
+            playerStats.UseStamina(dodgeStaminaDrainRate);
+            playerAnimator.SetTrigger("Dodge");
+        }
+        else if (context.canceled)
+        {
+            playerStats.StopUsingStamina();
+        }
+    }
+
     private void ApplyMovement()
     {
+        if (playerAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack")) return;
         Vector3 moveDirection = new Vector3(movementInput.x, 0, movementInput.y);
         moveDirection = cameraTransform.TransformDirection(moveDirection);
         moveDirection.y = 0;
@@ -131,11 +195,9 @@ public class PlayerController : MonoBehaviour
 
     private void HandleCameraRotation()
     {
-        // Rotate player horizontally based on look input
         float horizontalRotation = lookInput.x * rotationSpeed;
         transform.Rotate(0, horizontalRotation, 0);
 
-        // Rotate camera for vertical look, with clamping to prevent flipping
         verticalLookRotation -= lookInput.y * rotationSpeed;
         verticalLookRotation = Mathf.Clamp(verticalLookRotation, -maxVerticalLookAngle, maxVerticalLookAngle);
         cameraTransform.localRotation = Quaternion.Euler(verticalLookRotation, 0, 0);
@@ -143,10 +205,36 @@ public class PlayerController : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // Simple ground detection
-        if (collision.contacts[0].point.y <= transform.position.y)
+        if (collision.contacts.Length > 0 && collision.contacts[0].point.y <= transform.position.y)
         {
             isGrounded = true;
         }
     }
+
+    private void CheckAttackAnimationState()
+    {
+        if (playerAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack"))
+        {
+            isPlayingAttackAnimation = true;
+        }
+        else
+        {
+            isPlayingAttackAnimation = false;
+            playerStats.StopUsingStamina();
+        }
+    }
+
+    private void CheckGroundStatus()
+    {
+        float rayLength = 0.2f;
+        Vector3 rayOrigin = transform.position + Vector3.up * 0.1f;
+
+        isGrounded = Physics.Raycast(rayOrigin, Vector3.down, rayLength);
+
+        if (isGrounded) playerStats.StopUsingStamina();
+
+        Color rayColor = isGrounded ? Color.green : Color.red;
+        Debug.DrawRay(rayOrigin, Vector3.down * rayLength, rayColor);
+    }
+
 }
