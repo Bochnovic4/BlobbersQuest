@@ -51,9 +51,9 @@ public class LevelUpManager : MonoBehaviour
 
     private void Update()
     {
-        float distance = Vector2.Distance(player.transform.position, transform.position);
+        float distance = Vector3.Distance(player.transform.position, transform.position);
 
-        if (distance < 5f)
+        if (distance < 10f)
         {
             interactPanel.SetActive(true);
             isInRange = true;

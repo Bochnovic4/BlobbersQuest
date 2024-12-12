@@ -4,14 +4,14 @@ public class DeathZone : MonoBehaviour
 {
     private void OnTriggerEnter(Collider other)
     {
-        if (other.tag.Equals("Player"))
+        Player player = other.gameObject.GetComponent<Player>();
+        Enemy enemy = other.gameObject.GetComponent<Enemy>();
+        if (player != null)
         {
-            Player player = other.GetComponent<Player>();
             player.currentHealth = -1;
         }
-        else
+        if (enemy != null)
         {
-            Enemy enemy = other.GetComponent<Enemy>();
             enemy.currentHealth = -1;
         }
     }

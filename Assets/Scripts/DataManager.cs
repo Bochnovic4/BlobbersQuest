@@ -28,7 +28,6 @@ public class DataManager : MonoBehaviour
         FileStream saveFile = File.Create(path);
 
         formatter.Serialize(saveFile, playerDataDTO);
-
         saveFile.Close();
     }
 
@@ -59,8 +58,11 @@ public class DataManager : MonoBehaviour
 
     public void StartNewGame()
     {
-        if (!File.Exists(playerDataFileName))
-            File.Create(playerDataFileName);
+        if (File.Exists(playerDataFileName))
+        {
+            File.Delete(playerDataFileName);
+        }
+        File.Create(playerDataFileName);
 
         PlayerDataDTO playerDataDTO = new PlayerDataDTO
         {
@@ -72,7 +74,6 @@ public class DataManager : MonoBehaviour
             lvl = 0
         };
         BinaryFormatter formatter = new BinaryFormatter();
-
         string path = Path.Combine(Application.persistentDataPath, playerDataFileName);
 
         FileStream saveFile = File.Create(path);
@@ -80,5 +81,6 @@ public class DataManager : MonoBehaviour
         formatter.Serialize(saveFile, playerDataDTO);
 
         saveFile.Close();
+        loadPlayerData();
     }
 }

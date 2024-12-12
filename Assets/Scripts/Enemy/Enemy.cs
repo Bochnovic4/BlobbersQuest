@@ -3,22 +3,29 @@ using UnityEngine;
 public class Enemy : MonoBehaviour
 {
     public float currentHealth;
-    public float damage;
     [SerializeField]
     private EnemyData enemyData;
+    [SerializeField]
+    private Player player;
+    public Vector3 spawnPosition;
+    public bool isBoss = false;
 
     void Start()
     {
         currentHealth = enemyData.Health;
-        damage = enemyData.Damage;
+        spawnPosition = transform.position;
     }
 
-    // Update is called once per frame
     void Update()
     {
         if(currentHealth < 0) 
         {
-            gameObject.SetActive(false);
+            if (isBoss)
+            {
+                GameManager.Instance.OnBossDeath();
+            }
+            player.exp += enemyData.exp;
+            Destroy(gameObject);
         }
     }
 }

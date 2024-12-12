@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -24,7 +25,7 @@ public class PlayerController : MonoBehaviour
     private bool isMovingRight;
     private bool isMovingLeft;
     private bool isSprinting;
-    private bool isBlocking;
+    public bool isBlocking;
     public bool isPlayingAttackAnimation;
 
     private Animator playerAnimator;
@@ -37,6 +38,9 @@ public class PlayerController : MonoBehaviour
     private float jumpStaminaDrainRate = 20f;
     private float dodgeStaminaDrainRate = 10f;
     public bool isCameraLocked;
+
+    [SerializeField]
+    private PlayerSword playerSword;
 
     private void Awake()
     {
@@ -83,6 +87,7 @@ public class PlayerController : MonoBehaviour
     public void OnMove(InputAction.CallbackContext context)
     {
         if (playerAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack")) return;
+        if (isBlocking) return;
         movementInput = context.ReadValue<Vector2>();
         isMovingForward = movementInput.y > 0;
         isMovingBack = movementInput.y < 0;
@@ -105,6 +110,7 @@ public class PlayerController : MonoBehaviour
 
     private void PerformJump()
     {
+        if (isBlocking) return;
         rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
         playerStats.UseStamina(jumpStaminaDrainRate);
         isGrounded = false;
@@ -150,20 +156,44 @@ public class PlayerController : MonoBehaviour
             playerStats.UseStamina(attackStaminaDrainRate);
             isPlayingAttackAnimation = true;
             playerAnimator.SetTrigger("Attack");
+            playerSword.EnableCollider();
         }
     }
 
-    private void OnDodge(InputAction.CallbackContext context)
+    public void OnDodge(InputAction.CallbackContext context)
     {
         if (context.started && playerStats.currentStamina > 0)
         {
             playerStats.UseStamina(dodgeStaminaDrainRate);
             playerAnimator.SetTrigger("Dodge");
+            PerformDodge();
         }
         else if (context.canceled)
         {
             playerStats.StopUsingStamina();
         }
+    }
+    private void PerformDodge()
+    {
+        Vector3 backwardDirection = -transform.forward; 
+
+        float dodgeSpeed = 10f;
+        Vector3 dodgeVelocity = backwardDirection * dodgeSpeed;
+
+        StartCoroutine(ApplyDodgeForce(dodgeVelocity, .1f));
+    }
+
+    private IEnumerator ApplyDodgeForce(Vector3 velocity, float duration)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            transform.position += velocity * Time.deltaTime;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        ResetMovement();
     }
 
     private void ApplyMovement()
@@ -211,12 +241,14 @@ public class PlayerController : MonoBehaviour
         {
             isPlayingAttackAnimation = true;
             isCameraLocked = true;
+            playerSword.EnableCollider();
         }
         else
         {
             isPlayingAttackAnimation = false;
             isCameraLocked = false;
             playerStats.StopUsingStamina();
+            playerSword.DisableCollider();
         }
     }
 
@@ -232,5 +264,8 @@ public class PlayerController : MonoBehaviour
         Color rayColor = isGrounded ? Color.green : Color.red;
         Debug.DrawRay(rayOrigin, Vector3.down * rayLength, rayColor);
     }
-
+    private void ResetMovement()
+    {
+        rb.linearVelocity = Vector3.zero;
+    }
 }

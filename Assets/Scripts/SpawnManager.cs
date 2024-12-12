@@ -3,22 +3,33 @@ using UnityEngine;
 
 public class SpawnManager : MonoBehaviour
 {
+    [SerializeField] private GameManager gameManager;
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private int enemyCount = 10;
     [SerializeField] private float minimumSpacing = 5f;
 
     [SerializeField] private List<BoxCollider> spawnAreas;
-
+    private List<GameObject> enemies;
     private List<Vector3> spawnPositions = new List<Vector3>();
 
     private void Start()
     {
-        SpawnEnemies();
         enemyPrefab.SetActive(true);
+        SpawnEnemies();
     }
 
-    private void SpawnEnemies()
+    public void SpawnEnemies()
     {
+        if (enemies == null)
+        {
+            enemies = new List<GameObject>();
+        }
+        else
+        {
+            enemies.Clear();
+        }
+
+        spawnPositions.Clear();
         for (int i = 0; i < spawnAreas.Count; i++)
         {
             Bounds bounds = spawnAreas[i].bounds;
@@ -30,7 +41,8 @@ public class SpawnManager : MonoBehaviour
                 if (spawnPosition != Vector3.negativeInfinity)
                 {
                     spawnPositions.Add(spawnPosition);
-                    Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+                    GameObject enemy = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+                    enemies.Add(enemy);
                 }
                 else
                 {

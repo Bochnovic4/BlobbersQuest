@@ -38,6 +38,8 @@ public class Player : MonoBehaviour
     private GameObject deathPanel;
     [SerializeField]
     private Transform spawnTransform;
+    [SerializeField]
+    private GameManager gameManager;
     void Start()
     {
         transform.position = spawnTransform.position;
@@ -59,6 +61,8 @@ public class Player : MonoBehaviour
 
         currentStamina = maxStamina;
         currentHealth = maxHealth;
+        healthBarRect.sizeDelta = new Vector2(healthBarRect.sizeDelta.x + maxHealth / 10f, healthBarRect.sizeDelta.y);
+        staminaBarRect.sizeDelta = new Vector2(staminaBarRect.sizeDelta.x + maxStamina / 10f, staminaBarRect.sizeDelta.y);
     }
 
     void Update()
@@ -89,31 +93,38 @@ public class Player : MonoBehaviour
     private void Die()
     {
         exp = 0;
+        playerData.exp = 0;
+        gameManager.RestartGame();
         transform.position = spawnTransform.position;
+        ResetStats();
+        currentHealth = maxHealth;
         ToggleDeathScreen();
     }
 
     private void ToggleDeathScreen()
     {
-        deathPanel.SetActive(false);
-        DelayAction(5);
         deathPanel.SetActive(true);
+        StartCoroutine(DelayAction(3));
     }
-    IEnumerator DelayAction(float delayTime)
+
+    private IEnumerator DelayAction(float delayTime)
     {
         yield return new WaitForSeconds(delayTime);
+        deathPanel.SetActive(false);
     }
+
 
     public void ResetStats()
     {
         maxStamina = playerData.stamina;
         maxHealth = playerData.health;
         strenght = playerData.strenght;
-
+        defence = playerData.defence;
     }
 
     public void TakeDamage(int damage)
     {
+        damage = damage - Mathf.FloorToInt(defence / 3f);
         currentHealth -= damage;
     }
     

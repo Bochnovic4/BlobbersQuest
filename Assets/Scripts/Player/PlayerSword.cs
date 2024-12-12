@@ -4,17 +4,18 @@ public class PlayerSword : MonoBehaviour
 {
     [SerializeField]
     private PlayerController player;
-    public int damage;
     private CapsuleCollider swordCollider;
+    [SerializeField]
+    private PlayerData playerData;
+    [SerializeField]
+    private float damage;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         swordCollider = GetComponent<CapsuleCollider>();
         swordCollider.enabled = false;
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (player.isPlayingAttackAnimation)
@@ -29,7 +30,12 @@ public class PlayerSword : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Collision");
+        Enemy enemy = other.GetComponent<Enemy>();
+        if (enemy != null)
+        {
+            enemy.currentHealth -= damage + (damage * playerData.strenght/10);
+            DisableCollider();
+        }
     }
 
     public void EnableCollider()

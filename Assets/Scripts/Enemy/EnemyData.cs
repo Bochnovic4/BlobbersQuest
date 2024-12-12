@@ -4,5 +4,5 @@ using UnityEngine;
 public class EnemyData : ScriptableObject
 {
     public float Health;
-    public float Damage;
+    public float exp;
 }
