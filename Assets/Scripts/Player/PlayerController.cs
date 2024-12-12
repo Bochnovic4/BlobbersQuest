@@ -140,7 +140,9 @@ public class PlayerController : MonoBehaviour
         if (context.started)
         {
             isBlocking = true;
+            ResetMovement();
             playerAnimator.SetBool("isBlocking", isBlocking);
+            ResetMovement();
         }
         if (context.canceled)
         {
@@ -175,6 +177,7 @@ public class PlayerController : MonoBehaviour
     }
     private void PerformDodge()
     {
+        ResetMovement();
         Vector3 backwardDirection = -transform.forward; 
 
         float dodgeSpeed = 10f;
@@ -198,6 +201,7 @@ public class PlayerController : MonoBehaviour
 
     private void ApplyMovement()
     {
+        if (isBlocking) return;
         if (playerAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack")) return;
         Vector3 moveDirection = new Vector3(movementInput.x, 0, movementInput.y);
         moveDirection = cameraTransform.TransformDirection(moveDirection);
@@ -267,5 +271,6 @@ public class PlayerController : MonoBehaviour
     private void ResetMovement()
     {
         rb.linearVelocity = Vector3.zero;
+        rb.MovePosition(transform.position);
     }
 }

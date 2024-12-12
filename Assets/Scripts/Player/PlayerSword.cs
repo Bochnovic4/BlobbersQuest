@@ -10,6 +10,8 @@ public class PlayerSword : MonoBehaviour
     [SerializeField]
     private float damage;
 
+    private bool hasHit;
+
     void Start()
     {
         swordCollider = GetComponent<CapsuleCollider>();
@@ -21,19 +23,29 @@ public class PlayerSword : MonoBehaviour
         if (player.isPlayingAttackAnimation)
         {
             swordCollider.enabled = true;
+
+            if (!hasHit)
+            {
+                hasHit = false;
+            }
         }
         else
         {
             swordCollider.enabled = false;
+            hasHit = false;
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
+        if (hasHit) return;
+
         Enemy enemy = other.GetComponent<Enemy>();
         if (enemy != null)
         {
-            enemy.currentHealth -= damage + (damage * playerData.strenght/10);
+            float finalDamage = damage * (1 + playerData.strenght / 100);
+            enemy.currentHealth -= finalDamage;
+            hasHit = true;
             DisableCollider();
         }
     }
@@ -47,5 +59,4 @@ public class PlayerSword : MonoBehaviour
     {
         swordCollider.enabled = false;
     }
-
 }
