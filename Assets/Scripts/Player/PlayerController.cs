@@ -36,7 +36,7 @@ public class PlayerController : MonoBehaviour
     private float attackStaminaDrainRate = 20f;
     private float jumpStaminaDrainRate = 20f;
     private float dodgeStaminaDrainRate = 10f;
-
+    public bool isCameraLocked;
 
     private void Awake()
     {
@@ -53,22 +53,21 @@ public class PlayerController : MonoBehaviour
         CheckAttackAnimationState();
         if (isSprinting)
         {
-            sprintTimer += Time.deltaTime; // Accumulate sprint time
-            if (sprintTimer >= 1f) // Apply stamina drain every second
+            sprintTimer += Time.deltaTime;
+            if (sprintTimer >= 1f)
             {
                 playerStats.UseStamina(sprintStaminaDrainRate);
-                sprintTimer = 0f; // Reset timer
+                sprintTimer = 0f;
             }
             if (playerStats.currentStamina < sprintStaminaDrainRate)
             {
-                // Stop sprinting if out of stamina
                 isSprinting = false;
                 playerAnimator.SetBool("isSprinting", false);
             }
         }
         else
         {
-            sprintTimer = 0f; // Reset timer when not sprinting
+            sprintTimer = 0f;
             playerStats.StopUsingStamina();
         }
 
@@ -89,7 +88,7 @@ public class PlayerController : MonoBehaviour
         isMovingBack = movementInput.y < 0;
         isMovingRight = movementInput.x > 0;
         isMovingLeft = movementInput.x < 0;
-        Debug.Log("move input: " + movementInput.ToString());
+
         playerAnimator.SetBool("isMovingForward", isMovingForward);
         playerAnimator.SetBool("isMovingBack", isMovingBack);
         playerAnimator.SetBool("isMovingRight", isMovingRight);
@@ -176,7 +175,6 @@ public class PlayerController : MonoBehaviour
 
         if (movementInput != Vector2.zero)
         {
-            // Adjust speed if sprinting
             float currentSpeed = isSprinting ? moveSpeed * sprintSpeedMultiplier : moveSpeed;
             Vector3 movement = moveDirection.normalized * currentSpeed * Time.fixedDeltaTime;
             rb.MovePosition(rb.position + movement);
@@ -195,6 +193,8 @@ public class PlayerController : MonoBehaviour
 
     private void HandleCameraRotation()
     {
+        if (isCameraLocked || GameManager.Instance.IsMenuActive) return;
+
         float horizontalRotation = lookInput.x * rotationSpeed;
         transform.Rotate(0, horizontalRotation, 0);
 
@@ -203,23 +203,19 @@ public class PlayerController : MonoBehaviour
         cameraTransform.localRotation = Quaternion.Euler(verticalLookRotation, 0, 0);
     }
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.contacts.Length > 0 && collision.contacts[0].point.y <= transform.position.y)
-        {
-            isGrounded = true;
-        }
-    }
 
     private void CheckAttackAnimationState()
     {
-        if (playerAnimator.GetCurrentAnimatorStateInfo(0).IsTag("Attack"))
+        var animatorState = playerAnimator.GetCurrentAnimatorStateInfo(0);
+        if (animatorState.IsTag("Attack"))
         {
             isPlayingAttackAnimation = true;
+            isCameraLocked = true;
         }
         else
         {
             isPlayingAttackAnimation = false;
+            isCameraLocked = false;
             playerStats.StopUsingStamina();
         }
     }
